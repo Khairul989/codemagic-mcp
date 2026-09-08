@@ -84,13 +84,49 @@ For example, for [Claude Desktop](https://claude.ai/download):
 
 Interact with Codemagic CI/CD using natural language.
 
+Tools marked **(admin)** are only registered when `CODEMAGIC_MCP_ENABLE_ADMIN=1`.
+
 | API Category | Tools |
 |:---|:---|
-| **Applications API** | `get_all_applications`, `get_application`, `add_application`, `add_application_private` |
-| **Artifacts API** | `get_artifact`, `create_public_artifact_url` |
+| **Applications API** | `get_all_applications`, `get_application`, `add_application` (admin), `add_application_private` (admin) |
+| **Artifacts API** | `get_artifact`, `create_public_artifact_url` (admin) |
 | **Builds API** | `start_build`, `get_builds`, `get_build_status`, `cancel_build`, `get_build_step_log` |
-| **Caches API** | `get_app_caches`, `delete_all_app_caches`, `delete_app_cache` |
-| **Teams API** | `invite_team_member`, `delete_team_member` |
+| **Caches API** | `get_app_caches`, `delete_all_app_caches` (admin), `delete_app_cache` (admin) |
+| **Teams API** | `invite_team_member` (admin), `delete_team_member` (admin) |
+
+---
+
+## Security
+
+This server hands an AI agent a token that can start builds, read logs and change your team.
+Two of its tools read untrusted input: `get_build_step_log` and `get_artifact` return whatever
+ran in your CI, including text written by anyone who can push a commit. A poisoned log line is
+one way an agent gets talked into doing something you did not ask for.
+
+**The defaults are the safe configuration.** Only read and build tools are registered. Anything
+that creates, deletes, invites, or publishes a public link stays unregistered until you opt in.
+
+| Variable | Default | What it does |
+|:---|:---|:---|
+| `CODEMAGIC_API_KEY` | *(required)* | Your Codemagic API token. |
+| `CODEMAGIC_MCP_ENABLE_ADMIN` | unset (off) | Set to `1` to also register the (admin) tools: add app, delete caches, invite/remove team members, create public artifact URLs. |
+| `CODEMAGIC_SSH_KEY_PASSPHRASE` | unset | Passphrase for `add_application_private`, so it never passes through the conversation. |
+| `CODEMAGIC_MCP_MAX_TEXT_BYTES` | `100000` | Cap on returned log text. |
+| `CODEMAGIC_MCP_MAX_PUBLIC_URL_TTL` | `86400` | Longest lifetime allowed for a public artifact URL. |
+
+Built-in protections:
+
+- **Identifiers are validated and percent-encoded** before going into a URL. Without this,
+  `requests` resolves `../` and a crafted `app_id` could redirect a call to a different
+  Codemagic endpoint using your token.
+- **Private keys are read from disk**, not passed as a tool argument. `add_application_private`
+  takes `ssh_key_path`, so the key never enters the conversation, the logs, or the model context.
+- **Build logs are redacted and truncated** before they reach the model: private key blocks,
+  GitHub/AWS/Slack tokens, JWTs, `KEY=value` secret assignments and your own Codemagic token.
+  This is a backstop, not a guarantee. Treat CI logs as sensitive.
+- **Artifacts download to a file** and the tool returns a path, rather than streaming a binary
+  and any signing material inside it into the conversation.
+- **Every HTTP call has a timeout**, so a hung connection cannot wedge the server.
 
 ---
 

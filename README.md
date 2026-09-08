@@ -88,7 +88,7 @@ Tools marked **(admin)** are only registered when `CODEMAGIC_MCP_ENABLE_ADMIN=1`
 
 | API Category | Tools |
 |:---|:---|
-| **Applications API** | `get_all_applications`, `get_application`, `add_application` (admin), `add_application_private` (admin) |
+| **Applications API** | `get_all_applications`, `get_application`, `refresh_app_branches`, `add_application` (admin), `add_application_private` (admin) |
 | **Artifacts API** | `get_artifact`, `create_public_artifact_url` (admin) |
 | **Builds API** | `start_build`, `get_builds`, `get_build_status`, `cancel_build`, `get_build_step_log` |
 | **Caches API** | `get_app_caches`, `delete_all_app_caches` (admin), `delete_app_cache` (admin) |

@@ -185,6 +185,37 @@ def get_application(app_id: str) -> Dict[str, Dict[str, Any]]:
     )
     return _json(_check(response))
 
+@mcp.tool()
+def refresh_app_branches(app_id: str) -> str:
+    """
+    Ask Codemagic to re-scan the application's repository for branches.
+
+    Calls the undocumented endpoint the Codemagic dashboard uses behind its
+    branch-list refresh control (POST /apps/{app_id}/branches). Use it when a
+    branch you just pushed is missing from `get_application`.
+
+    The refresh is ASYNCHRONOUS: the API returns 202 with a job id and does the
+    scan afterwards. A `get_application` call made immediately after this one
+    may still return the old branch list, so do not report "no new branches"
+    from a read that follows straight on. Wait and read again.
+
+    Args:
+        app_id: The application identifier
+
+    Returns:
+        The refresh job id
+    """
+    app_id = _safe_id(app_id, "app_id")
+    response = requests.post(
+        f"{BASE_URL}/apps/{app_id}/branches",
+        headers=get_headers(),
+        json={},
+        timeout=HTTP_TIMEOUT,
+    )
+    _check(response)
+    job = _json(response)
+    return job if isinstance(job, str) else str(job)
+
 @admin_tool()
 def add_application(repository_url: str, team_id: Optional[str] = None) -> Dict[str, Any]:
     """
